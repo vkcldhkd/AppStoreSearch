@@ -12,19 +12,22 @@ final class SearchMainViewReactor: Reactor {
     enum Action {
         case searchHistory(keyword: String?)
         case search(keyword: String?)
+        case delete(keyword: String?)
     }
     
     enum Mutation {
         case setLoading(Bool)
+        case setSearching(Bool)
         case setKeyword(String?)
         case setKeywordSection([String]?)
         case setSearchMainSection(SearchResponse?)
+        case setSection([SearchMainSection])
     }
     
     struct State {
         var isLoading: Bool
+        var isSearching: Bool
         var keyword: String?
-        
         var section: [SearchMainSection]
         var resultCount: Int?
     }
@@ -36,6 +39,7 @@ final class SearchMainViewReactor: Reactor {
         let historySection: SearchMainSection = SearchMainViewReactor.createHistorySection()
         self.initialState = State(
             isLoading: false,
+            isSearching: false,
             section: [historySection]
         )
     }
@@ -47,7 +51,8 @@ final class SearchMainViewReactor: Reactor {
             let setKeyword = Observable<Mutation>.just(.setKeyword(trimmedKeyword))
             let setSection = AppleSearchService.getSearchHistoryResponse(keyword: trimmedKeyword)
                 .map { Mutation.setKeywordSection($0) }
-            return .concat([setKeyword, setSection])
+            let setSearching = Observable<Mutation>.just(.setSearching(true))
+            return .concat([setKeyword, setSection, setSearching])
             
         case let .search(keyword):
             let trimmedKeyword: String? = keyword?.trimmed
@@ -56,7 +61,24 @@ final class SearchMainViewReactor: Reactor {
             let setKeyword = Observable<Mutation>.just(.setKeyword(trimmedKeyword))
             let setSection = AppleSearchService.getSearchResponse(keyword: trimmedKeyword)
                 .map { Mutation.setSearchMainSection($0?.data) }
-            return .concat([startLoading, setKeyword, setSection, endLoading])
+            let setSearching = Observable<Mutation>.just(.setSearching(false))
+            return .concat([startLoading, setKeyword, setSection, setSearching, endLoading])
+            
+        case let .delete(keyword):
+            let trimmedKeyword: String? = keyword?.trimmed
+            let hasChanges = AppleSearchService.deleteHistory(keyword: trimmedKeyword)
+            guard hasChanges else { return .empty() }
+            var setSection: Observable<Mutation> {
+                if self.currentState.isSearching {
+                    return AppleSearchService.getSearchHistoryResponse(keyword: trimmedKeyword)
+                        .map { Mutation.setKeywordSection($0) }
+                    
+                } else {
+                    let historySection: SearchMainSection = SearchMainViewReactor.createHistorySection()
+                    return Observable<Mutation>.just(.setSection([historySection]))
+                }
+            }
+            return .concat([setSection])
         }
     }
     
@@ -65,6 +87,11 @@ final class SearchMainViewReactor: Reactor {
         case let .setLoading(isLoading):
             var newState = state
             newState.isLoading = isLoading
+            return newState
+            
+        case let .setSearching(isSearching):
+            var newState = state
+            newState.isSearching = isSearching
             return newState
             
         case let .setKeyword(keyword):
@@ -94,6 +121,11 @@ final class SearchMainViewReactor: Reactor {
             )
             newState.section = [section]
             return newState
+            
+        case let .setSection(section):
+            var newState = state
+            newState.section = section
+            return newState
         }
     }
 }
@@ -109,7 +141,11 @@ private extension SearchMainViewReactor {
     }
     
     static func createEmptyHistorySection() -> SearchMainSection {
-        let cellReactor: SearchHistoryCellReactor = SearchHistoryCellReactor(model: "최근 검색어가 없습니다.", isContains: false, isEmpty: true)
+        let cellReactor: SearchHistoryCellReactor = SearchHistoryCellReactor(
+            model: "최근 검색어가 없습니다.",
+            isContains: false,
+            isEmpty: true
+        )
         let sectionItem: SearchMainSectionItem = SearchMainSectionItem.historyItem(cellReactor)
         return SearchMainSection.history([sectionItem])
     }

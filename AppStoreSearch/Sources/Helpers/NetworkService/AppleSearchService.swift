@@ -28,7 +28,10 @@ struct AppleSearchService {
         let containKeywords = CoreDataHelper.search.action.loadKeywordHistory()
             .filter { $0.contains(keyword ?? "") }
         return Observable.just(containKeywords)
-        
+    }
+    
+    static func deleteHistory(keyword: String?) -> Bool {
+        return CoreDataHelper.search.action.deleteSearchKeyword(keyword: keyword)
     }
 }
 

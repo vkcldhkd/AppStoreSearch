@@ -8,16 +8,20 @@
 import UIKit
 import RxSwift
 import RxOptional
+import RxDataSources
 
 extension SearchMainViewController {
     // MARK: - BindTableView
     func bindTableView(reactor: Reactor) {
+        // MARK: - DataSource
+        let dataSource = self.createDataSource()
+        
         // MARK: - Delegate
         self.tableView.rx.setDelegate(self)
             .disposed(by: self.disposeBag)
         
         // MARK: - Action
-        self.tableView.rx.itemSelected(dataSource: self.dataSource)
+        self.tableView.rx.itemSelected(dataSource: dataSource)
             .throttle(.milliseconds(600), scheduler: MainScheduler.asyncInstance)
             .observe(on: MainScheduler.asyncInstance)
             .subscribe(onNext: { [weak self] item in
@@ -43,7 +47,7 @@ extension SearchMainViewController {
         
         // MARK: - State
         reactor.state.map { $0.section }
-            .bind(to: self.tableView.rx.items(dataSource: self.dataSource))
+            .bind(to: self.tableView.rx.items(dataSource: dataSource))
             .disposed(by: self.disposeBag)
     }
 }
@@ -71,5 +75,36 @@ extension SearchMainViewController: UITableViewDelegate {
         case .history: return 60
         default: return .zero
         }
+    }
+}
+
+private extension SearchMainViewController {
+    func createDataSource() -> RxTableViewSectionedReloadDataSource<SearchMainSection> {
+        return .init(
+            configureCell: { [weak self] dataSource, tableView, indexPath, sectionItem in
+                guard let self = self else { return UITableViewCell() }
+                guard let reactor = self.reactor else { return UITableViewCell() }
+                
+                switch sectionItem {
+                case let .searchItem(cellReactor):
+                    let cell = tableView.dequeue(Reusable.listCell, for: indexPath)
+                    cell.reactor = cellReactor
+                    return cell
+                case let .searchEmptyItem(keyword):
+                    let cell = tableView.dequeue(Reusable.emptyCell, for: indexPath)
+                    cell.updateKeywordTitle(keyword: keyword)
+                    return cell
+                case let .historyItem(cellReactor):
+                    let cell = tableView.dequeue(Reusable.historyCell, for: indexPath)
+                    cell.reactor = cellReactor
+                    cell.deleteButton.rx.tap
+                        .throttle(.milliseconds(600), scheduler: MainScheduler.asyncInstance)
+                        .map { Reactor.Action.delete(keyword: cellReactor.currentState.model ) }
+                        .bind(to: reactor.action)
+                        .disposed(by: cell.disposeBag)
+                    return cell
+                }
+            }
+        )
     }
 }

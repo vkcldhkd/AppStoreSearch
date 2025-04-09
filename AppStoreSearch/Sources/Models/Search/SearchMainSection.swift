@@ -14,13 +14,24 @@ enum SearchMainSection {
 }
 
 extension SearchMainSection: SectionModelType {
-    var items: [SearchMainSectionItem] {
+//    typealias Item = SearchMainSectionItem
+//    typealias Identity = String
+    
+    var items: [Item] {
         switch self {
         case let .history(items): return items
         case let .search(items): return items
         case let .result(items): return items
         }
     }
+    
+//    var identity: String {
+//        switch self {
+//        case .history: return "history"
+//        case .search: return "search"
+//        case .result: return "result"
+//        }
+//    }
     
     init(original: SearchMainSection, items: [SearchMainSectionItem]) {
         switch original {
@@ -36,3 +47,20 @@ enum SearchMainSectionItem {
     case searchItem(SearchItemCellReactor)
     case searchEmptyItem(String?)
 }
+
+//extension SearchMainSectionItem: IdentifiableType, Equatable {
+//    var identity: String {
+//        switch self {
+//        case let .historyItem(reactor):
+//            return "history_\(reactor.currentState.model)" // 또는 reactor의 id 등
+//        case let .searchItem(reactor):
+//            return "search_\(reactor.currentState.model.bundleID ?? "")"
+//        case let .searchEmptyItem(message):
+//            return "empty_\(message ?? "nil")"
+//        }
+//    }
+//
+//    static func == (lhs: SearchMainSectionItem, rhs: SearchMainSectionItem) -> Bool {
+//        lhs.identity == rhs.identity
+//    }
+//}

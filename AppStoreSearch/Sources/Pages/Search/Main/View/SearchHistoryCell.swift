@@ -17,13 +17,18 @@ final class SearchHistoryCell: BaseTableViewCell {
         $0.spacing = 8
         $0.addArrangedSubview(self.searchImageView)
         $0.addArrangedSubview(self.searchTitleLabel)
+        $0.addArrangedSubview(self.deleteButton)
     }
     private let searchImageView: UIImageView = UIImageView(image: UIImage.init(systemName: "magnifyingglass")).then {
         $0.isHidden = true
         $0.tintColor = UIColor.lightGray
     }
     private let searchTitleLabel: UILabel = UILabel()
-    
+    let deleteButton = UIButton(type: .system).then {
+        $0.setImage(UIImage(systemName: "xmark.circle"), for: .normal)
+        $0.tintColor = .systemGray
+    }
+
     // MARK: Initializing
     override init(
         style: UITableViewCell.CellStyle,
@@ -50,6 +55,10 @@ private extension SearchHistoryCell {
         }
         
         self.searchImageView.snp.makeConstraints { make in
+            make.size.equalTo(15)
+        }
+        
+        self.deleteButton.snp.makeConstraints { make in
             make.size.equalTo(15)
         }
     }
@@ -82,6 +91,10 @@ extension SearchHistoryCell: ReactorKit.View {
         isContainsObservable
             .map { !$0 }
             .bind(to: self.searchImageView.rx.isHidden)
+            .disposed(by: self.disposeBag)
+        
+        reactor.state.map { $0.isEmpty }
+            .bind(to: self.deleteButton.rx.isHidden)
             .disposed(by: self.disposeBag)
     }
 }

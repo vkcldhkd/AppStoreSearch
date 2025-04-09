@@ -30,33 +30,9 @@ final class SearchMainViewController: BaseViewController {
         $0.keyboardDismissMode = .onDrag
     }
     
-    // MARK: - Properties
-    let dataSource: RxTableViewSectionedReloadDataSource<SearchMainSection>
-    private static func dataSourceFactory() -> RxTableViewSectionedReloadDataSource<SearchMainSection> {
-        return .init(
-            configureCell: { dataSource, tableView, indexPath, sectionItem in
-                switch sectionItem {
-                case let .searchItem(cellReactor):
-                    let cell = tableView.dequeue(Reusable.listCell, for: indexPath)
-                    cell.reactor = cellReactor
-                    return cell
-                case let .searchEmptyItem(keyword):
-                    let cell = tableView.dequeue(Reusable.emptyCell, for: indexPath)
-                    cell.updateKeywordTitle(keyword: keyword)
-                    return cell
-                case let .historyItem(cellReactor):
-                    let cell = tableView.dequeue(Reusable.historyCell, for: indexPath)
-                    cell.reactor = cellReactor
-                    return cell
-                }
-            }
-        )
-    }
-    
     // MARK: - Initializing
     init() {
         defer { self.reactor = Reactor() }
-        self.dataSource = type(of: self).dataSourceFactory()
         super.init(prefersHidden: true)
     }
     
